@@ -27,7 +27,6 @@ struct ContentView: View {
                 .cornerRadius(999)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
 
-                // Animation style toggle
                 Toggle(isOn: $useDirectionalAnimation) {
                     Text("Use Directional Animation")
                         .font(.system(size: 14, weight: .medium))
@@ -35,7 +34,6 @@ struct ContentView: View {
                 .padding(.horizontal, 20)
                 .toggleStyle(SwitchToggleStyle(tint: .blue))
 
-                // Animation duration slider
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Animation Speed: \(String(format: "%.2f", animationDuration))s")
                         .font(.system(size: 14, weight: .medium))
@@ -61,7 +59,7 @@ struct ContentView: View {
                 ModalBackdrop(isPresented: $showModal)
                     .transition(.opacity)
 
-                ModalContent(
+                ModalView(
                     isPresented: $showModal,
                     useDirectionalAnimation: useDirectionalAnimation,
                     animationDuration: animationDuration
@@ -86,13 +84,55 @@ struct ModalBackdrop: View {
     }
 }
 
+struct ModalView: View {
+    @Binding var isPresented: Bool
+    var useDirectionalAnimation: Bool
+    var animationDuration: Double
+
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
+
+    private let dismissThreshold: CGFloat = 120
+
+    var body: some View {
+        ModalContent(
+            isPresented: $isPresented,
+            useDirectionalAnimation: useDirectionalAnimation,
+            animationDuration: animationDuration
+        )
+        .offset(y: dragOffset)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    let newOffset = max(0, value.translation.height)
+                    dragOffset = newOffset
+                    isDragging = true
+                }
+                .onEnded { value in
+                    isDragging = false
+
+                    if dragOffset > dismissThreshold {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                            isPresented = false
+                            dragOffset = 0
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            dragOffset = 0
+                        }
+                    }
+                }
+        )
+        .opacity(1.0 - (dragOffset / (dismissThreshold * 2.5)))
+    }
+}
+
 struct ModalContent: View {
     @Binding var isPresented: Bool
     @State private var showPrivateKey = false
     var useDirectionalAnimation: Bool
     var animationDuration: Double
 
-    // Computed animations based on the slider value
     private var contentTransition: Animation {
         .spring(response: animationDuration, dampingFraction: 0.7)
     }
@@ -101,7 +141,6 @@ struct ModalContent: View {
         .spring(response: animationDuration * 1.2, dampingFraction: 0.8)
     }
 
-    // Custom smooth transitions for non-directional animations
     private var smoothFadeInScale: AnyTransition {
         return AnyTransition.modifier(
             active: SmoothTransitionModifier(opacity: 0, scale: 1.05, yOffset: -100),
@@ -118,7 +157,6 @@ struct ModalContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 if showPrivateKey {
                     Image(systemName: "creditcard")
@@ -127,7 +165,8 @@ struct ModalContent: View {
                         .transition(
                             useDirectionalAnimation
                                 ? .opacity.combined(with: .move(edge: .trailing))
-                            : .opacity.combined(with: .scale))
+                                : .opacity.combined(with: .scale)
+                        )
                         .padding(.leading, 8)
                 } else {
                     Text("iCloud Backup")
@@ -141,7 +180,7 @@ struct ModalContent: View {
                 Spacer()
 
                 Button(action: {
-                    withAnimation(contentTransition) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                         if showPrivateKey {
                             showPrivateKey = false
                         } else {
@@ -161,7 +200,6 @@ struct ModalContent: View {
             .padding(.horizontal, 24)
             .zIndex(1)
 
-            // Content area that changes
             ZStack {
                 if showPrivateKey {
                     PrivateKeyContent(
