@@ -10,33 +10,69 @@ import UIKit
 
 struct ContentView: View {
     @State private var showModal = false
+    @State private var useDirectionalAnimation = false
+    @State private var animationDuration: Double = 0.25
+
     var body: some View {
         ZStack {
-            Button("Show Modal") {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                    showModal = true
+            VStack(spacing: 20) {
+                Button("Show Modal") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                        showModal = true
+                    }
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(999)
-            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(999)
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
 
-            // Custom modal view
+                // Animation style toggle
+                Toggle(isOn: $useDirectionalAnimation) {
+                    Text("Use Directional Animation")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.horizontal, 20)
+                .toggleStyle(SwitchToggleStyle(tint: .blue))
+
+                // Animation duration slider
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Animation Speed: \(String(format: "%.2f", animationDuration))s")
+                        .font(.system(size: 14, weight: .medium))
+
+                    HStack {
+                        Text("Fast")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+
+                        Slider(value: $animationDuration, in: 0.1...3.0, step: 0.05)
+                            .accentColor(.blue)
+
+                        Text("Slow")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+            }
+
             if showModal {
                 ModalBackdrop(isPresented: $showModal)
                     .transition(.opacity)
 
-                ModalContent(isPresented: $showModal)
-                    .transition(.move(edge: .bottom))
+                ModalContent(
+                    isPresented: $showModal,
+                    useDirectionalAnimation: useDirectionalAnimation,
+                    animationDuration: animationDuration
+                )
+                .transition(.move(edge: .bottom))
             }
         }
     }
 }
 
-// Separate backdrop component
 struct ModalBackdrop: View {
     @Binding var isPresented: Bool
 
@@ -51,10 +87,20 @@ struct ModalBackdrop: View {
     }
 }
 
-// Modal content component
 struct ModalContent: View {
     @Binding var isPresented: Bool
     @State private var showPrivateKey = false
+    var useDirectionalAnimation: Bool
+    var animationDuration: Double
+
+    // Computed animations based on the slider value
+    private var contentTransition: Animation {
+        .spring(response: animationDuration, dampingFraction: 0.7)
+    }
+
+    private var heightTransition: Animation {
+        .spring(response: animationDuration * 1.2, dampingFraction: 0.8)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -63,17 +109,23 @@ struct ModalContent: View {
                 if showPrivateKey {
                     Image(systemName: "creditcard")
                         .font(.system(size: 22, weight: .medium, design: .rounded))
-                        .transition(.opacity)
+                        .transition(
+                            useDirectionalAnimation
+                                ? .opacity.combined(with: .move(edge: .trailing))
+                                : .opacity)
                 } else {
                     Text("Options")
                         .font(.system(size: 19, weight: .medium, design: .rounded))
-                        .transition(.opacity)
+                        .transition(
+                            useDirectionalAnimation
+                                ? .opacity.combined(with: .move(edge: .leading))
+                                : .opacity)
                 }
 
                 Spacer()
 
                 Button(action: {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    withAnimation(contentTransition) {
                         if showPrivateKey {
                             showPrivateKey = false
                         } else {
@@ -91,51 +143,68 @@ struct ModalContent: View {
             }
             .padding(.top, 24)
             .padding(.horizontal, 24)
-            .zIndex(1)  // Keep header on top
+            .zIndex(1)
 
             // Content area that changes
-            Group {
+            ZStack {
                 if showPrivateKey {
                     PrivateKeyContent(onBack: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                        withAnimation(contentTransition) {
                             showPrivateKey = false
                         }
                     })
                     .transition(
-                        .asymmetric(
-                            insertion: AnyTransition.opacity.combined(
-                                with: .scale(scale: 1.05, anchor: .center)),
-                            removal: AnyTransition.opacity.combined(
-                                with: .scale(scale: 0.95, anchor: .center))
-                        ))
+                        useDirectionalAnimation
+                            ? .asymmetric(
+                                insertion: AnyTransition.move(edge: .trailing)
+                                    .combined(with: .opacity),
+                                removal: AnyTransition.move(edge: .trailing)
+                                    .combined(with: .opacity)
+                            )
+                            : .asymmetric(
+                                insertion: AnyTransition.opacity.combined(
+                                    with: .scale(scale: 1.05, anchor: .center)),
+                                removal: AnyTransition.opacity.combined(
+                                    with: .scale(scale: 0.95, anchor: .center))
+                            )
+                    )
+                    .id("privateKey")
                 } else {
                     OptionsContent(onPrivateKeyTap: {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                        withAnimation(contentTransition) {
                             showPrivateKey = true
                         }
                     })
                     .transition(
-                        .asymmetric(
-                            insertion: AnyTransition.opacity.combined(
-                                with: .scale(scale: 1.05, anchor: .center)),
-                            removal: AnyTransition.opacity.combined(
-                                with: .scale(scale: 0.95, anchor: .center))
-                        ))
+                        useDirectionalAnimation
+                            ? .asymmetric(
+                                insertion: AnyTransition.move(edge: .leading)
+                                    .combined(with: .opacity),
+                                removal: AnyTransition.move(edge: .leading)
+                                    .combined(with: .opacity)
+                            )
+                            : .asymmetric(
+                                insertion: AnyTransition.opacity.combined(
+                                    with: .scale(scale: 1.05, anchor: .center)),
+                                removal: AnyTransition.opacity.combined(
+                                    with: .scale(scale: 0.95, anchor: .center))
+                                
+                            )
+                    )
+                    .id("options")
                 }
             }
-            .fixedSize(horizontal: false, vertical: true)  // Only take needed height
+            .fixedSize(horizontal: false, vertical: true)
         }
         .background(Color.white)
         .cornerRadius(32)
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
-        // This animation applies to the container's size changes
-        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: showPrivateKey)
+        .animation(heightTransition, value: showPrivateKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }
 
-// Options content only (without header)
 struct OptionsContent: View {
     var onPrivateKeyTap: () -> Void
 
@@ -176,7 +245,6 @@ struct OptionsContent: View {
             .foregroundColor(.primary)
 
             Button(action: {
-                // Remove Wallet action
             }) {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
@@ -198,20 +266,19 @@ struct OptionsContent: View {
     }
 }
 
-// Private Key content only (without header)
 struct PrivateKeyContent: View {
     var onBack: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Private Key")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
 
                 Text(
                     "Your Private Key is the key used to back up your wallet. Keep it secret and secure at all times."
                 )
-                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .font(.system(size: 18, weight: .regular, design: .rounded))
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
 
@@ -261,7 +328,6 @@ struct PrivateKeyContent: View {
                 }
 
                 Button(action: {
-                    // Reveal action
                 }) {
                     HStack {
                         Image(systemName: "eye")
