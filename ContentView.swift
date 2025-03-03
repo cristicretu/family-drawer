@@ -58,6 +58,7 @@ struct ContentView: View {
             if showModal {
                 ModalBackdrop(isPresented: $showModal)
                     .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.25), value: showModal)
 
                 ModalView(
                     isPresented: $showModal,
@@ -65,6 +66,7 @@ struct ContentView: View {
                     animationDuration: animationDuration
                 )
                 .transition(.move(edge: .bottom))
+                .animation(.spring(response: 0.4, dampingFraction: 0.75), value: showModal)
             }
         }
     }
@@ -124,6 +126,7 @@ struct ModalView: View {
                 }
         )
         .opacity(1.0 - (dragOffset / (dismissThreshold * 2.5)))
+        .animation(nil, value: dragOffset)
     }
 }
 
@@ -141,17 +144,31 @@ struct ModalContent: View {
         .spring(response: animationDuration * 1.2, dampingFraction: 0.8)
     }
 
-    private var smoothFadeInScale: AnyTransition {
+    private var optimizedFadeInScale: AnyTransition {
         return AnyTransition.modifier(
-            active: SmoothTransitionModifier(opacity: 0, scale: 1.05, yOffset: -100),
-            identity: SmoothTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
+            active: OptimizedTransitionModifier(opacity: 0, scale: 1.05, yOffset: -100),
+            identity: OptimizedTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
         )
     }
 
-    private var smoothFadeOutScale: AnyTransition {
+    private var optimizedFadeOutScale: AnyTransition {
         return AnyTransition.modifier(
-            active: SmoothTransitionModifier(opacity: 0, scale: 0.95, yOffset: 100),
-            identity: SmoothTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
+            active: OptimizedTransitionModifier(opacity: 0, scale: 0.95, yOffset: 100),
+            identity: OptimizedTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
+        )
+    }
+
+    private var optimizedLeadingTransition: AnyTransition {
+        return .asymmetric(
+            insertion: AnyTransition.offset(x: -100).combined(with: .opacity),
+            removal: AnyTransition.offset(x: -100).combined(with: .opacity)
+        )
+    }
+
+    private var optimizedTrailingTransition: AnyTransition {
+        return .asymmetric(
+            insertion: AnyTransition.offset(x: 100).combined(with: .opacity),
+            removal: AnyTransition.offset(x: 100).combined(with: .opacity)
         )
     }
 
@@ -164,8 +181,8 @@ struct ModalContent: View {
                         .foregroundStyle(.secondary)
                         .transition(
                             useDirectionalAnimation
-                                ? .opacity.combined(with: .move(edge: .trailing))
-                                : .opacity.combined(with: .scale)
+                                ? optimizedTrailingTransition
+                                : .scale.combined(with: .opacity)
                         )
                         .padding(.leading, 8)
                 } else {
@@ -173,8 +190,9 @@ struct ModalContent: View {
                         .font(.system(size: 19, weight: .medium, design: .rounded))
                         .transition(
                             useDirectionalAnimation
-                                ? .opacity.combined(with: .move(edge: .leading))
-                                : smoothFadeInScale)
+                                ? optimizedLeadingTransition
+                                : optimizedFadeInScale
+                        )
                 }
 
                 Spacer()
@@ -212,15 +230,10 @@ struct ModalContent: View {
                     )
                     .transition(
                         useDirectionalAnimation
-                            ? .asymmetric(
-                                insertion: AnyTransition.move(edge: .trailing)
-                                    .combined(with: .opacity),
-                                removal: AnyTransition.move(edge: .trailing)
-                                    .combined(with: .opacity)
-                            )
+                            ? optimizedTrailingTransition
                             : .asymmetric(
-                                insertion: smoothFadeInScale,
-                                removal: smoothFadeOutScale
+                                insertion: optimizedFadeInScale,
+                                removal: optimizedFadeOutScale
                             )
                     )
                     .id("privateKey")
@@ -235,15 +248,10 @@ struct ModalContent: View {
                     )
                     .transition(
                         useDirectionalAnimation
-                            ? .asymmetric(
-                                insertion: AnyTransition.move(edge: .leading)
-                                    .combined(with: .opacity),
-                                removal: AnyTransition.move(edge: .leading)
-                                    .combined(with: .opacity)
-                            )
+                            ? optimizedLeadingTransition
                             : .asymmetric(
-                                insertion: smoothFadeInScale,
-                                removal: smoothFadeOutScale
+                                insertion: optimizedFadeInScale,
+                                removal: optimizedFadeOutScale
                             )
                     )
                     .id("options")
@@ -257,6 +265,32 @@ struct ModalContent: View {
         .padding(.bottom, 16)
         .animation(heightTransition, value: showPrivateKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+    }
+}
+
+struct OptimizedTransitionModifier: ViewModifier {
+    let opacity: Double
+    let scale: CGFloat
+    let yOffset: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .scaleEffect(scale)
+            .offset(y: yOffset)
+    }
+}
+
+struct SmoothTransitionModifier: ViewModifier {
+    let opacity: Double
+    let scale: CGFloat
+    let yOffset: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .scaleEffect(scale)
+            .offset(y: yOffset)
     }
 }
 
@@ -424,17 +458,14 @@ struct PrivateKeyContent: View {
     }
 }
 
-// Shared animated button component
 struct AnimatedActionButton: View {
     var isPrivateKeyView: Bool
     var animationDuration: Double
 
-    // Custom animation for the button transition
     private var buttonTransition: Animation {
         .spring(response: animationDuration, dampingFraction: 0.7)
     }
 
-    // Custom smooth transitions for button
     private var smoothButtonTransition: AnyTransition {
         .modifier(
             active: SmoothButtonTransitionModifier(
@@ -486,14 +517,11 @@ struct AnimatedActionButton: View {
     }
 }
 
-// Custom modifier for smooth button transitions
 struct SmoothButtonTransitionModifier: ViewModifier {
     let progress: Double
     let isPrivateKeyView: Bool
 
-    // Interpolate between colors
     private func interpolateColor(from: Color, to: Color) -> Color {
-        // This is a simplified version - in a real app you'd want to properly interpolate RGB values
         return progress == 0 ? from : to
     }
 
@@ -527,20 +555,6 @@ struct SmoothButtonTransitionModifier: ViewModifier {
         .cornerRadius(16)
         .opacity(progress < 0.5 ? 1 - progress * 2 : (progress - 0.5) * 2)
         .scaleEffect(progress < 0.5 ? 1.0 : 1.0)
-    }
-}
-
-// Custom modifier for smooth simultaneous animations
-struct SmoothTransitionModifier: ViewModifier {
-    let opacity: Double
-    let scale: CGFloat
-    let yOffset: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(opacity)
-            .scaleEffect(scale)
-            .offset(y: yOffset)
     }
 }
 
