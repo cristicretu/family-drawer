@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct ContentView: View {
     @State private var showModal = false
@@ -102,6 +101,23 @@ struct ModalContent: View {
         .spring(response: animationDuration * 1.2, dampingFraction: 0.8)
     }
 
+    private var smoothFadeInScale: AnyTransition {
+        let opacity = AnyTransition.opacity
+        let scale = AnyTransition.scale(scale: 1.05)
+
+        return AnyTransition.modifier(
+            active: SmoothTransitionModifier(opacity: 0, scale: 1.05),
+            identity: SmoothTransitionModifier(opacity: 1, scale: 1)
+        )
+    }
+
+    private var smoothFadeOutScale: AnyTransition {
+        return AnyTransition.modifier(
+            active: SmoothTransitionModifier(opacity: 0, scale: 0.95),
+            identity: SmoothTransitionModifier(opacity: 1, scale: 1)
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -162,10 +178,8 @@ struct ModalContent: View {
                                     .combined(with: .opacity)
                             )
                             : .asymmetric(
-                                insertion: AnyTransition.opacity.combined(
-                                    with: .scale(scale: 1.05, anchor: .center)),
-                                removal: AnyTransition.opacity.combined(
-                                    with: .scale(scale: 0.95, anchor: .center))
+                                insertion: smoothFadeInScale,
+                                removal: smoothFadeOutScale
                             )
                     )
                     .id("privateKey")
@@ -184,11 +198,8 @@ struct ModalContent: View {
                                     .combined(with: .opacity)
                             )
                             : .asymmetric(
-                                insertion: AnyTransition.opacity.combined(
-                                    with: .scale(scale: 1.05, anchor: .center)),
-                                removal: AnyTransition.opacity.combined(
-                                    with: .scale(scale: 0.95, anchor: .center))
-                                
+                                insertion: smoothFadeInScale,
+                                removal: smoothFadeOutScale
                             )
                     )
                     .id("options")
@@ -345,6 +356,18 @@ struct PrivateKeyContent: View {
             .padding(.top, 16)
             .padding(.bottom, 24)
         }
+    }
+}
+
+// Custom modifier for smooth simultaneous animations
+struct SmoothTransitionModifier: ViewModifier {
+    let opacity: Double
+    let scale: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .scaleEffect(scale)
     }
 }
 
