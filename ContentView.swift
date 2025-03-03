@@ -126,14 +126,14 @@ struct ModalContent: View {
                         .transition(
                             useDirectionalAnimation
                                 ? .opacity.combined(with: .move(edge: .trailing))
-                                : .opacity)
+                                : smoothFadeInScale)
                 } else {
                     Text("Options")
                         .font(.system(size: 19, weight: .medium, design: .rounded))
                         .transition(
                             useDirectionalAnimation
                                 ? .opacity.combined(with: .move(edge: .leading))
-                                : .opacity)
+                                : smoothFadeInScale)
                 }
 
                 Spacer()
