@@ -122,13 +122,15 @@ struct ModalContent: View {
             HStack {
                 if showPrivateKey {
                     Image(systemName: "creditcard")
-                        .font(.system(size: 22, weight: .medium, design: .rounded))
+                        .font(.system(size: 32, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
                         .transition(
                             useDirectionalAnimation
                                 ? .opacity.combined(with: .move(edge: .trailing))
-                                : smoothFadeInScale)
+                            : .opacity.combined(with: .scale))
+                        .padding(.leading, 8)
                 } else {
-                    Text("Options")
+                    Text("iCloud Backup")
                         .font(.system(size: 19, weight: .medium, design: .rounded))
                         .transition(
                             useDirectionalAnimation
@@ -226,11 +228,18 @@ struct OptionsContent: View {
 
     var body: some View {
         VStack(spacing: 10) {
+            Rectangle()
+                .frame(height: 1.5)
+                .foregroundColor(.primary.opacity(0.05))
+                .cornerRadius(20)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 8)
+
             Button(action: {
                 onPrivateKeyTap()
             }) {
                 HStack {
-                    Image(systemName: "lock")
+                    Image(systemName: "widget.large")
                         .font(.system(size: 17, weight: .medium, design: .rounded))
                     Text("View Private Key")
                         .font(.system(size: 17, weight: .medium, design: .rounded))
@@ -247,9 +256,26 @@ struct OptionsContent: View {
                 // View Recovery Phrase action
             }) {
                 HStack {
-                    Image(systemName: "doc.text")
+                    Image(systemName: "rectangle.grid.3x3")
                         .font(.system(size: 17, weight: .medium, design: .rounded))
                     Text("View Recovery Phrase")
+                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                    Spacer()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.black.opacity(0.03))
+                .cornerRadius(16, antialiased: true)
+            }
+            .foregroundColor(.primary)
+
+            Button(action: {
+                onPrivateKeyTap()
+            }) {
+                HStack {
+                    Image(systemName: "circle.grid.2x2.fill")
+                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                    Text("View Backup Group")
                         .font(.system(size: 17, weight: .medium, design: .rounded))
                     Spacer()
                 }
@@ -276,14 +302,20 @@ struct PrivateKeyContent: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Private Key")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 23, weight: .semibold, design: .rounded))
 
                 Text(
                     "Your Private Key is the key used to back up your wallet. Keep it secret and secure at all times."
                 )
-                .font(.system(size: 18, weight: .regular, design: .rounded))
+                .font(.system(size: 17, weight: .regular, design: .rounded))
                 .foregroundColor(.secondary)
-                .padding(.bottom, 8)
+
+                Rectangle()
+                    .frame(height: 1.5)
+                    .foregroundColor(.primary.opacity(0.05))
+                    .cornerRadius(20)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 13)
 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 12) {
@@ -291,7 +323,7 @@ struct PrivateKeyContent: View {
                             .foregroundColor(.secondary)
                         Text("Keep your private key safe")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                     }
 
                     HStack(spacing: 12) {
@@ -299,7 +331,7 @@ struct PrivateKeyContent: View {
                             .foregroundColor(.secondary)
                         Text("Don't share it with anyone else")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                     }
 
                     HStack(spacing: 12) {
@@ -307,12 +339,12 @@ struct PrivateKeyContent: View {
                             .foregroundColor(.secondary)
                         Text("If you lose it we can't recover it")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 16, weight: .regular, design: .rounded))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 32)
             .padding(.top, 16)
 
             Spacer(minLength: 16)
@@ -322,15 +354,30 @@ struct PrivateKeyContent: View {
                     onBack()
                 }) {
                     Text("Cancel")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Color.black.opacity(0.05))
                         .foregroundColor(.primary)
-                        .cornerRadius(16)
+                        .cornerRadius(999)
                 }
 
-                AnimatedActionButton(isPrivateKeyView: true, animationDuration: animationDuration)
+                Button(action: {
+                    onBack()
+                }) {
+                    HStack {
+                        Image(systemName: "faceid")
+                        Text("Reveal")
+                    }
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(999)
+                }
+
+                //                AnimatedActionButton(isPrivateKeyView: true, animationDuration: animationDuration)
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -370,7 +417,7 @@ struct AnimatedActionButton: View {
             Group {
                 if isPrivateKeyView {
                     HStack {
-                        Image(systemName: "eye")
+                        Image(systemName: "faceid")
                         Text("Reveal")
                         Spacer()
                     }
@@ -380,7 +427,7 @@ struct AnimatedActionButton: View {
                     .padding(.horizontal, 16)
                     .background(Color.blue)
                     .foregroundColor(.white)
-                    .cornerRadius(16)
+                    .cornerRadius(999)
                 } else {
                     HStack {
                         Image(systemName: "exclamationmark.triangle")
@@ -393,7 +440,7 @@ struct AnimatedActionButton: View {
                     .padding(.horizontal, 16)
                     .background(Color.red.opacity(0.1))
                     .foregroundColor(.red)
-                    .cornerRadius(16)
+                    .cornerRadius(30)
                 }
             }
             .transition(smoothButtonTransition)
