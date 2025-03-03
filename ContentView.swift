@@ -101,20 +101,18 @@ struct ModalContent: View {
         .spring(response: animationDuration * 1.2, dampingFraction: 0.8)
     }
 
+    // Custom smooth transitions for non-directional animations
     private var smoothFadeInScale: AnyTransition {
-        let opacity = AnyTransition.opacity
-        let scale = AnyTransition.scale(scale: 1.05)
-
         return AnyTransition.modifier(
-            active: SmoothTransitionModifier(opacity: 0, scale: 1.05),
-            identity: SmoothTransitionModifier(opacity: 1, scale: 1)
+            active: SmoothTransitionModifier(opacity: 0, scale: 1.05, yOffset: -100),
+            identity: SmoothTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
         )
     }
 
     private var smoothFadeOutScale: AnyTransition {
         return AnyTransition.modifier(
-            active: SmoothTransitionModifier(opacity: 0, scale: 0.95),
-            identity: SmoothTransitionModifier(opacity: 1, scale: 1)
+            active: SmoothTransitionModifier(opacity: 0, scale: 0.95, yOffset: 100),
+            identity: SmoothTransitionModifier(opacity: 1, scale: 1, yOffset: 0)
         )
     }
 
@@ -164,11 +162,14 @@ struct ModalContent: View {
             // Content area that changes
             ZStack {
                 if showPrivateKey {
-                    PrivateKeyContent(onBack: {
-                        withAnimation(contentTransition) {
-                            showPrivateKey = false
-                        }
-                    })
+                    PrivateKeyContent(
+                        onBack: {
+                            withAnimation(contentTransition) {
+                                showPrivateKey = false
+                            }
+                        },
+                        animationDuration: animationDuration
+                    )
                     .transition(
                         useDirectionalAnimation
                             ? .asymmetric(
@@ -184,11 +185,14 @@ struct ModalContent: View {
                     )
                     .id("privateKey")
                 } else {
-                    OptionsContent(onPrivateKeyTap: {
-                        withAnimation(contentTransition) {
-                            showPrivateKey = true
-                        }
-                    })
+                    OptionsContent(
+                        onPrivateKeyTap: {
+                            withAnimation(contentTransition) {
+                                showPrivateKey = true
+                            }
+                        },
+                        animationDuration: animationDuration
+                    )
                     .transition(
                         useDirectionalAnimation
                             ? .asymmetric(
@@ -218,6 +222,7 @@ struct ModalContent: View {
 
 struct OptionsContent: View {
     var onPrivateKeyTap: () -> Void
+    var animationDuration: Double
 
     var body: some View {
         VStack(spacing: 10) {
@@ -255,21 +260,7 @@ struct OptionsContent: View {
             }
             .foregroundColor(.primary)
 
-            Button(action: {
-            }) {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                    Text("Remove Wallet")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                    Spacer()
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(16, antialiased: true)
-            }
-            .foregroundColor(.red)
+            AnimatedActionButton(isPrivateKeyView: false, animationDuration: animationDuration)
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
@@ -279,6 +270,7 @@ struct OptionsContent: View {
 
 struct PrivateKeyContent: View {
     var onBack: () -> Void
+    var animationDuration: Double
 
     var body: some View {
         VStack(spacing: 0) {
@@ -338,19 +330,7 @@ struct PrivateKeyContent: View {
                         .cornerRadius(16)
                 }
 
-                Button(action: {
-                }) {
-                    HStack {
-                        Image(systemName: "eye")
-                        Text("Reveal")
-                    }
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(16)
-                }
+                AnimatedActionButton(isPrivateKeyView: true, animationDuration: animationDuration)
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -359,15 +339,123 @@ struct PrivateKeyContent: View {
     }
 }
 
+// Shared animated button component
+struct AnimatedActionButton: View {
+    var isPrivateKeyView: Bool
+    var animationDuration: Double
+
+    // Custom animation for the button transition
+    private var buttonTransition: Animation {
+        .spring(response: animationDuration, dampingFraction: 0.7)
+    }
+
+    // Custom smooth transitions for button
+    private var smoothButtonTransition: AnyTransition {
+        .modifier(
+            active: SmoothButtonTransitionModifier(
+                progress: 0,
+                isPrivateKeyView: isPrivateKeyView
+            ),
+            identity: SmoothButtonTransitionModifier(
+                progress: 1,
+                isPrivateKeyView: isPrivateKeyView
+            )
+        )
+    }
+
+    var body: some View {
+        Button(action: {
+            // Action remains the same
+        }) {
+            Group {
+                if isPrivateKeyView {
+                    HStack {
+                        Image(systemName: "eye")
+                        Text("Reveal")
+                        Spacer()
+                    }
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+                } else {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                        Text("Remove Wallet")
+                        Spacer()
+                    }
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
+                    .background(Color.red.opacity(0.1))
+                    .foregroundColor(.red)
+                    .cornerRadius(16)
+                }
+            }
+            .transition(smoothButtonTransition)
+        }
+    }
+}
+
+// Custom modifier for smooth button transitions
+struct SmoothButtonTransitionModifier: ViewModifier {
+    let progress: Double
+    let isPrivateKeyView: Bool
+
+    // Interpolate between colors
+    private func interpolateColor(from: Color, to: Color) -> Color {
+        // This is a simplified version - in a real app you'd want to properly interpolate RGB values
+        return progress == 0 ? from : to
+    }
+
+    func body(content: Content) -> some View {
+        let fromBgColor = isPrivateKeyView ? Color.red.opacity(0.1) : Color.blue
+        let toBgColor = isPrivateKeyView ? Color.blue : Color.red.opacity(0.1)
+        let fromFgColor = isPrivateKeyView ? Color.red : Color.white
+        let toFgColor = isPrivateKeyView ? Color.white : Color.red
+
+        let iconName =
+            isPrivateKeyView
+            ? (progress < 0.5 ? "exclamationmark.triangle" : "eye")
+            : (progress < 0.5 ? "eye" : "exclamationmark.triangle")
+
+        let text =
+            isPrivateKeyView
+            ? (progress < 0.5 ? "Remove Wallet" : "Reveal")
+            : (progress < 0.5 ? "Reveal" : "Remove Wallet")
+
+        HStack {
+            Image(systemName: iconName)
+            Text(text)
+            Spacer()
+        }
+        .font(.system(size: 17, weight: .medium, design: .rounded))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .background(interpolateColor(from: fromBgColor, to: toBgColor))
+        .foregroundColor(interpolateColor(from: fromFgColor, to: toFgColor))
+        .cornerRadius(16)
+        .opacity(progress < 0.5 ? 1 - progress * 2 : (progress - 0.5) * 2)
+        .scaleEffect(progress < 0.5 ? 1.0 : 1.0)
+    }
+}
+
 // Custom modifier for smooth simultaneous animations
 struct SmoothTransitionModifier: ViewModifier {
     let opacity: Double
     let scale: CGFloat
+    let yOffset: CGFloat
 
     func body(content: Content) -> some View {
         content
             .opacity(opacity)
             .scaleEffect(scale)
+            .offset(y: yOffset)
     }
 }
 
